@@ -10,15 +10,29 @@ function App() {
 
   const handleSend = async () => {
     if (input.trim() === '') return;
-    const newMessage = { sender: 'user', text: input };
-    setMessages([...messages, newMessage]);
+
 
     try {
+      // User sent empty message
       const response = await axios.post('http://localhost:5000/api/inference', { instructions: input });
+
+      // No response from ai model
+      if(!response) {
+        console.log('No response from AI model.');
+        setErrorMessage('No response from AI model.');
+        return;
+      }
+      
+      // Add user message to chat
+      const newMessage = { sender: 'user', text: input };
+      setMessages([...messages, newMessage]);
+
+      // Add ai message to chat
       const botMessage = { sender: 'bot', text: response.data.response };
       setMessages([...messages, newMessage, botMessage]);
+
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.log('Error sending message:', error);
       setErrorMessage('Error sending message: ' + error.message);
     }
 
@@ -42,7 +56,7 @@ function App() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+          onKeyUp={(e) => e.key === 'Enter' && handleSend()}
         />
         <button onClick={handleSend}>Send</button>
       </div>
