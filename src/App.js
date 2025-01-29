@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import ReactMarkdown from "react-markdown";
 import "./App.css";
 import ErrorModal from "./ErrorModal";
 
@@ -22,10 +23,7 @@ function App() {
         {
           model: "deepseek-r1-distill-llama-8b",
           messages: [
-            {
-              role: "system",
-              content: "",
-            },
+            { role: "system", content: "" },
             { role: "user", content: input },
           ],
           temperature: 0.7,
@@ -33,9 +31,7 @@ function App() {
           stream: false,
         },
         {
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
         },
       );
 
@@ -52,9 +48,16 @@ function App() {
         .replace(/<think>.*?<\/think>/s, "")
         .trim();
 
-      // Add user message and ai response to chat
       const newMessage = { sender: "user", text: input };
-      const botMessage = { sender: "bot", text: extractedContent };
+
+      // ai response has markdown formatting
+      const botMessage = {
+        sender: "bot",
+        text: extractedContent,
+        isMarkdown: true,
+      };
+
+      // Add user message and ai response to chat
       setMessages([...messages, newMessage, botMessage]);
     } catch (error) {
       console.log("Error sending message:", error);
@@ -75,7 +78,11 @@ function App() {
       <div className="chat-window">
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.sender}`}>
-            {msg.text}
+            {msg.isMarkdown ? (
+              <ReactMarkdown>{msg.text}</ReactMarkdown>
+            ) : (
+              msg.text
+            )}
           </div>
         ))}
       </div>
