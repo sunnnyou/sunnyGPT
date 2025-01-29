@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import "./App.css";
@@ -9,6 +9,12 @@ function App() {
   const [input, setInput] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  // Scroll to the newest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleSend = async () => {
     // No input from user or still loading
@@ -85,6 +91,8 @@ function App() {
             )}
           </div>
         ))}
+        <div ref={messagesEndRef} />{" "}
+        {/* This ensures scrolling to the latest message */}
       </div>
       {errorMessage && (
         <ErrorModal message={errorMessage} onClose={closeModal} />
