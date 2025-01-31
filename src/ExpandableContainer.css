@@ -1,0 +1,31 @@
+.expandable-container {
+  width: 90%;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 2%;
+  margin: 4% auto;
+}
+
+.expand-button {
+  width: 95%;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-block: 5px;
+  color: black;
+}
+
+.expand-button:hover {
+  background-color: #f0f0f0;
+}
+
+.content {
+  margin-top: 10px;
+  padding: 10px;
+  border-top: 1px solid #ddd;
+}

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import "./App.css";
 import ErrorModal from "./ErrorModal";
+import ExpandableContainer from "./ExpandableContainer";
 
 function App() {
   const [messages, setMessages] = useState([]);
@@ -19,6 +20,9 @@ function App() {
     setIsLoading(true);
     const newMessage = { sender: "user", text: prompt };
     setMessages((prev) => [...prev, newMessage]);
+
+    // TODO add previous messages to prompt
+    // TODO add floating button on bottom of screen to scoll to bottom if not on bottom already
 
     try {
       const response = await fetch(
@@ -42,14 +46,21 @@ function App() {
       // No response from ai
       if (!response.body) throw new Error("No response body");
 
+      // Get reader ready
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
       let botText = "";
+      let thinkText = "";
 
-      // Ai response has markdown formatting
-      const botMessage = { sender: "bot", text: "", isMarkdown: true };
+      const botMessage = {
+        sender: "bot",
+        text: "",
+        isMarkdown: true,
+        thinkText: "",
+      };
       setMessages((prev) => [...prev, botMessage]);
 
+      let thinking = false;
       while (true) {
         // Get reader for stream
         const { done, value } = await reader.read();
@@ -65,7 +76,20 @@ function App() {
             // Removes 'data: ' in front of curly braces of json
             const jsonData = JSON.parse(line.replace(/^data: /, "").trim());
             const content = jsonData.choices[0]?.delta?.content || "";
-            botText += content;
+
+            // Save "thinking" section of bot response separately
+            if (content === "<think>") {
+              thinking = true;
+              continue;
+            } else if (content === "</think>") {
+              thinking = false;
+              continue;
+            }
+            if (thinking) {
+              thinkText += content;
+            } else {
+              botText += content;
+            }
 
             // Append bot text to current chat message
             setMessages((prev) => {
@@ -73,6 +97,7 @@ function App() {
               updatedMessages[updatedMessages.length - 1] = {
                 ...botMessage,
                 text: botText,
+                thinkText,
               };
               return updatedMessages;
             });
@@ -106,6 +131,12 @@ function App() {
       <div className="chat-window">
         {messages.map((msg, index) => (
           <div key={index} className={`message ${msg.sender}`}>
+            {msg.thinkText?.trim() && (
+              <ExpandableContainer
+                message={msg.thinkText}
+                title="Click to expand thinking section"
+              ></ExpandableContainer>
+            )}
             {msg.isMarkdown ? (
               <ReactMarkdown>{msg.text}</ReactMarkdown>
             ) : (
