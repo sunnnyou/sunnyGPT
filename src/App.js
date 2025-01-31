@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import ReactMarkdown from "react-markdown";
 import "./App.css";
 import ErrorModal from "./ErrorModal";
@@ -16,62 +15,85 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async () => {
-    // No input from user or still loading
-    if (input.trim() === "" || isLoading) return;
-
+  const fetchStream = async (prompt) => {
     setIsLoading(true);
+    const newMessage = { sender: "user", text: prompt };
+    setMessages((prev) => [...prev, newMessage]);
 
     try {
-      // Get response from ai
-      const response = await axios.post(
+      const response = await fetch(
         "http://localhost:1234/v1/chat/completions",
         {
-          model: "deepseek-r1-distill-llama-8b",
-          messages: [
-            { role: "system", content: "" },
-            { role: "user", content: input },
-          ],
-          temperature: 0.7,
-          max_tokens: -1,
-          stream: false,
-        },
-        {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "deepseek-r1-distill-llama-8b",
+            messages: [
+              { role: "system", content: "" },
+              { role: "user", content: prompt },
+            ],
+            temperature: 0.7,
+            max_tokens: -1,
+            stream: true,
+          }),
         },
       );
 
       // No response from ai
-      if (!response) {
-        console.log("No response from AI model.");
-        setErrorMessage("No response from AI model.");
-        return;
+      if (!response.body) throw new Error("No response body");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let botText = "";
+
+      // Ai response has markdown formatting
+      const botMessage = { sender: "bot", text: "", isMarkdown: true };
+      setMessages((prev) => [...prev, botMessage]);
+
+      while (true) {
+        // Get reader for stream
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+
+        // Split response into lines and process each line separately
+        const lines = chunk.split("\n");
+        for (const line of lines) {
+          if (!line.trim() || line.includes("[DONE]")) continue;
+
+          try {
+            // Removes 'data: ' in front of curly braces of json
+            const jsonData = JSON.parse(line.replace(/^data: /, "").trim());
+            const content = jsonData.choices[0]?.delta?.content || "";
+            botText += content;
+
+            // Append bot text to current chat message
+            setMessages((prev) => {
+              const updatedMessages = [...prev];
+              updatedMessages[updatedMessages.length - 1] = {
+                ...botMessage,
+                text: botText,
+              };
+              return updatedMessages;
+            });
+          } catch (error) {
+            console.warn("Skipping invalid JSON chunk:", line);
+          }
+        }
       }
-
-      // trim content from ai
-      const fullContent = response.data.choices[0].message.content;
-      const extractedContent = fullContent
-        .replace(/<think>.*?<\/think>/s, "")
-        .trim();
-
-      const newMessage = { sender: "user", text: input };
-
-      // ai response has markdown formatting
-      const botMessage = {
-        sender: "bot",
-        text: extractedContent,
-        isMarkdown: true,
-      };
-
-      // Add user message and ai response to chat
-      setMessages([...messages, newMessage, botMessage]);
     } catch (error) {
-      console.log("Error sending message:", error);
-      setErrorMessage("Error sending message: " + error.message);
+      console.error("Error streaming message:", error);
+      setErrorMessage("Error streaming message: " + error.message);
     } finally {
       setIsLoading(false);
     }
+  };
 
+  const handleSend = async () => {
+    // No input from user or still loading
+    if (input.trim() === "" || isLoading) return;
+    // process ai response
+    await fetchStream(input);
     // Remove text in input field
     setInput("");
   };
@@ -91,7 +113,7 @@ function App() {
             )}
           </div>
         ))}
-        <div ref={messagesEndRef} />{" "}
+        <div ref={messagesEndRef} />
         {/* This ensures scrolling to the latest message */}
       </div>
       {errorMessage && (
