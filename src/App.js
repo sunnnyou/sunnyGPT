@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import "./App.css";
 import ErrorModal from "./ErrorModal";
 import ExpandableContainer from "./ExpandableContainer";
+import ScrollBottomButton from "./ScrollBottomButton";
 
 function App() {
   const [messages, setMessages] = useState([]);
@@ -21,10 +22,14 @@ function App() {
     const newMessage = { sender: "user", text: prompt };
     setMessages((prev) => [...prev, newMessage]);
 
-    // TODO add previous messages to prompt
-    // TODO add floating button on bottom of screen to scoll to bottom if not on bottom already
-
     try {
+      // Include previous messages in the request
+      const formattedMessages = messages.map((msg) => ({
+        role: msg.sender === "user" ? "user" : "assistant",
+        content: msg.text,
+      }));
+      formattedMessages.push({ role: "user", content: prompt });
+
       const response = await fetch(
         "http://localhost:1234/v1/chat/completions",
         {
@@ -32,10 +37,7 @@ function App() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model: "deepseek-r1-distill-llama-8b",
-            messages: [
-              { role: "system", content: "" },
-              { role: "user", content: prompt },
-            ],
+            messages: formattedMessages,
             temperature: 0.7,
             max_tokens: -1,
             stream: true,
@@ -147,6 +149,7 @@ function App() {
         <div ref={messagesEndRef} />
         {/* This ensures scrolling to the latest message */}
       </div>
+      <ScrollBottomButton bottomElement={messagesEndRef} />
       {errorMessage && (
         <ErrorModal message={errorMessage} onClose={closeModal} />
       )}
@@ -158,7 +161,11 @@ function App() {
           onKeyUp={(e) => e.key === "Enter" && handleSend()}
           disabled={isLoading}
         />
-        <button onClick={handleSend} disabled={isLoading}>
+        <button
+          className="submit-button"
+          onClick={handleSend}
+          disabled={isLoading}
+        >
           {isLoading ? (
             <div className="loader-container">
               <span className="loader"></span>

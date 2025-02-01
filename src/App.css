@@ -47,7 +47,7 @@ input {
   border-radius: 4px;
 }
 
-button {
+.submit-button {
   margin-left: 8px;
   padding: 8px 16px;
   border: none;
@@ -57,7 +57,7 @@ button {
   cursor: pointer;
 }
 
-button:hover {
+.submit-button:hover {
   background-color: #0056b3;
 }
 
